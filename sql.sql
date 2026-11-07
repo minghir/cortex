@@ -65,3 +65,5 @@ CREATE INDEX idx_memories_project_id ON brain.memories(project_id);
 
 CREATE INDEX idx_memories_embedding ON brain.memories 
 USING hnsw (embedding vector_cosine_ops);
+
+ALTER TABLE brain.projects ADD CONSTRAINT unique_project_name UNIQUE (name);
