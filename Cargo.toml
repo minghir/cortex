@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "crates/cortex_parser",
+    "crates/cortex_brain",
+]
+resolver = "2"
