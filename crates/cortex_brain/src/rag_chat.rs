@@ -81,7 +81,7 @@ impl RagChat {
             FROM brain.memories
             WHERE project_id = $2
             ORDER BY embedding <=> $1
-            LIMIT 4
+            LIMIT 8
             "#,
         )
         .bind(vector)
@@ -106,18 +106,25 @@ impl RagChat {
     }
 
     /// Generează răspunsul final prin Ollama Chat
+    /// Generează răspunsul final prin Ollama Chat
     async fn generate_answer(&self, prompt: &str) -> Result<String, Box<dyn Error>> {
+        let system_instruction = 
+            "Ești un asistent expert în C++. Analizează atent contextul primit din baza de date. "
+            .to_string() + 
+            "Răspunde strict pe baza funcțiilor și claselor menționate în context. " +
+            "Dacă contextul conține doar nume de clase fără metode explicite, menționează clasele relevante fără să inventezi metode C++ inexistente.";
+
         let req = ChatReq {
-            model: "llama3.2".to_string(), // Schimbă cu qwen2.5 / mistral dacă dorești
+            model: "llama3.2".to_string(), // sau "qwen2.5"
             messages: vec![
                 ChatMessage {
                     role: "system".to_string(),
-                    content: "Ești un asistent arhitect/developer expert. Răspunde precis la întrebările utilizatorului folosind doar contextul extras din proiect furnizat în prompt.".to_string(),
+                    content: system_instruction,
                 },
                 ChatMessage {
-                    role: "system".to_string(),
-                    content: "Ești un asistent expert în C++. Analizează atent contextul primit din baza de date. Răspunde strict pe baza funcțiilor și claselor menționate în context. Dacă contextul conține doar nume de clase fără metode explicite, menționează clasele relevante fără să inventezi metode C++ inexistente.".to_string(),
-                }
+                    role: "user".to_string(),
+                    content: prompt.to_string(),
+                },
             ],
             stream: false,
         };
