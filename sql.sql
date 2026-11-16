@@ -1,3 +1,6 @@
+-- Atenție: șterge toate tabelele și datele din schema brain.
+DROP SCHEMA IF EXISTS brain CASCADE;
+
 -- 1. Creare schema brain
 CREATE SCHEMA IF NOT EXISTS brain;
 
@@ -7,9 +10,12 @@ CREATE TABLE brain.projects (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     tech_stack JSONB DEFAULT '[]'::jsonb,
+    root_path TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE brain.projects ADD COLUMN IF NOT EXISTS root_path TEXT;
 
 -- 3. Decizii de Arhitectură
 CREATE TABLE brain.architecture_decisions (
@@ -36,8 +42,11 @@ CREATE TABLE brain.classes (
     id BIGSERIAL PRIMARY KEY,
     file_id BIGINT NOT NULL REFERENCES brain.source_files(id) ON DELETE CASCADE,
     class_name VARCHAR(255) NOT NULL,
-    description TEXT
+    description TEXT,
+    class_definition TEXT
 );
+
+ALTER TABLE brain.classes ADD COLUMN IF NOT EXISTS class_definition TEXT;
 
 -- 6. Funcții
 CREATE TABLE brain.functions (
@@ -67,3 +76,14 @@ CREATE INDEX idx_memories_embedding ON brain.memories
 USING hnsw (embedding vector_cosine_ops);
 
 ALTER TABLE brain.projects ADD CONSTRAINT unique_project_name UNIQUE (name);
+
+-- 9. Istoricul conversațiilor, separat pe proiect
+CREATE TABLE brain.chat_history (
+    id BIGSERIAL PRIMARY KEY,
+    project_id BIGINT NOT NULL REFERENCES brain.projects(id) ON DELETE CASCADE,
+    role VARCHAR(16) NOT NULL CHECK (role IN ('user', 'assistant')),
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_chat_history_project_id ON brain.chat_history(project_id, id DESC);

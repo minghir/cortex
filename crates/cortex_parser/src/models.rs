@@ -7,6 +7,7 @@ pub struct FunctionInfo {
 #[derive(Debug, Clone)]
 pub struct ClassInfo {
     pub name: String,
+    pub definition: String,
     pub functions: Vec<FunctionInfo>,
 }
 
