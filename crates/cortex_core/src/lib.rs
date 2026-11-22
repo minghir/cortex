@@ -19,26 +19,41 @@ pub struct CortexEngine {
 
 impl CortexEngine {
     /// Returnează lista tuturor proiectelor înregistrate în baza de date.
-    pub async fn list_projects(&self) -> Result<Vec<ProjectDto>, Box<dyn std::error::Error + Send + Sync>> {
-            let rows = sqlx::query(
-                "SELECT id, name, project_type FROM brain.projects ORDER BY id DESC",
-            )
-            .fetch_all(&self.pool)
-            .await?;
+    pub async fn list_projects(&self) -> Result<Vec<ProjectDto>, BoxError> {
+        let rows = sqlx::query(
+            "SELECT id, name, project_type, root_path, git_remote FROM brain.projects ORDER BY id DESC",
+        )
+        .fetch_all(&self.pool)
+        .await?;
 
-            let projects = rows
-                .into_iter()
-                .map(|row| ProjectDto {
-                    id: row.get("id"),
-                    name: row.get("name"),
-                    project_type: row.get("project_type"),
-                    root_path: None,
-                    git_remote: None,
-                })
-                .collect();
+        Ok(rows.iter().map(row_to_project).collect())
+    }
 
-            Ok(projects)
-        }
+    pub async fn update_project_root(
+        &self,
+        project_id: i64,
+        root_path: &Path,
+    ) -> Result<ProjectDto, BoxError> {
+        let canon = std::fs::canonicalize(root_path)
+            .unwrap_or_else(|_| root_path.to_path_buf())
+            .to_string_lossy()
+            .into_owned();
+
+        let row = sqlx::query(
+            r#"
+            UPDATE brain.projects
+            SET root_path = $1
+            WHERE id = $2
+            RETURNING id, name, project_type, root_path, git_remote
+            "#,
+        )
+        .bind(&canon)
+        .bind(project_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(row_to_project(&row))
+    }
 
         /// Încarcă ultimele `limit` mesaje din istoricul conversației unui proiect (în ordine cronologică).
         pub async fn load_history(
